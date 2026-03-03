@@ -573,12 +573,9 @@ impl NeuroWealthVault {
 
         env.storage().instance().set(&DataKey::Paused, &true);
 
-        let owner: Address = env.storage().instance()
-            .get(&DataKey::Owner).unwrap();
-        env.events().publish(
-            (symbol_short!("paused"),),
-            VaultPausedEvent { caller: owner }
-        );
+        let owner: Address = env.storage().instance().get(&DataKey::Owner).unwrap();
+        env.events()
+            .publish((symbol_short!("paused"),), VaultPausedEvent { owner });
     }
 
     /// Unpauses the vault, re-enabling deposits and withdrawals.
@@ -614,12 +611,9 @@ impl NeuroWealthVault {
 
         env.storage().instance().set(&DataKey::Paused, &false);
 
-        let owner: Address = env.storage().instance()
-            .get(&DataKey::Owner).unwrap();
-        env.events().publish(
-            (symbol_short!("unpaused"),),
-            VaultUnpausedEvent { caller: owner }
-        );
+        let owner: Address = env.storage().instance().get(&DataKey::Owner).unwrap();
+        env.events()
+            .publish((symbol_short!("unpaused"),), VaultUnpausedEvent { owner });
     }
 
     /// Emergency pause function that immediately halts all operations.
@@ -650,12 +644,9 @@ impl NeuroWealthVault {
 
         env.storage().instance().set(&DataKey::Paused, &true);
 
-        let owner: Address = env.storage().instance()
-            .get(&DataKey::Owner).unwrap();
-        env.events().publish(
-            (symbol_short!("emerg"),),
-            EmergencyPausedEvent { caller: owner }
-        );
+        let owner: Address = env.storage().instance().get(&DataKey::Owner).unwrap();
+        env.events()
+            .publish((symbol_short!("emerg"),), EmergencyPausedEvent { owner });
     }
 
     // ==========================================================================
@@ -849,10 +840,9 @@ impl NeuroWealthVault {
     /// - The old agent will immediately lose access to rebalance()
     pub fn update_agent(env: Env, new_agent: Address) {
         Self::require_is_owner(&env);
-        
-        let old_agent: Address = env.storage().instance()
-            .get(&DataKey::Agent).unwrap();
-        
+
+        let old_agent: Address = env.storage().instance().get(&DataKey::Agent).unwrap();
+
         env.storage().instance().set(&DataKey::Agent, &new_agent);
 
         env.events().publish(
@@ -1055,9 +1045,7 @@ impl NeuroWealthVault {
     /// # Events
     /// None
     pub fn get_usdc_token(env: Env) -> Address {
-        env.storage().instance()
-            .get(&DataKey::UsdcToken)
-            .unwrap()
+        env.storage().instance().get(&DataKey::UsdcToken).unwrap()
     }
 
     // ==========================================================================
@@ -1157,7 +1145,6 @@ impl NeuroWealthVault {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1166,13 +1153,13 @@ mod tests {
     fn setup_vault(env: &Env) -> (Address, Address, Address) {
         let contract_id = env.register_contract(None, NeuroWealthVault);
         let client = NeuroWealthVaultClient::new(env, &contract_id);
-        
+
         let agent = Address::generate(env);
         let usdc_token = Address::generate(env);
         let owner = agent.clone();
-        
+
         client.initialize(&agent, &usdc_token);
-        
+
         (contract_id, agent, owner)
     }
 
@@ -1201,15 +1188,15 @@ mod tests {
         let env = Env::default();
         env.mock_all_auths();
 
-        let (contract_id, _agent, _owner) = setup_vault(&env);
+        let (contract_id, _agent, owner) = setup_vault(&env);
         let client = NeuroWealthVaultClient::new(&env, &contract_id);
 
         assert_eq!(client.is_paused(), false);
-        
-        client.pause();
+
+        client.pause(&owner);
         assert_eq!(client.is_paused(), true);
-        
-        client.unpause();
+
+        client.unpause(&owner);
         assert_eq!(client.is_paused(), false);
     }
 
@@ -1218,12 +1205,12 @@ mod tests {
         let env = Env::default();
         env.mock_all_auths();
 
-        let (contract_id, _agent, _owner) = setup_vault(&env);
+        let (contract_id, _agent, owner) = setup_vault(&env);
         let client = NeuroWealthVaultClient::new(&env, &contract_id);
 
         assert_eq!(client.is_paused(), false);
-        
-        client.emergency_pause();
+
+        client.emergency_pause(&owner);
         assert_eq!(client.is_paused(), true);
     }
 
@@ -1366,12 +1353,12 @@ mod tests {
         let env = Env::default();
         env.mock_all_auths();
 
-        let (contract_id, _agent, _owner) = setup_vault(&env);
+        let (contract_id, _agent, owner) = setup_vault(&env);
         let client = NeuroWealthVaultClient::new(&env, &contract_id);
 
         let user = Address::generate(&env);
-        
-        client.pause();
+
+        client.pause(&owner);
         client.withdraw(&user, &1_000_000); // Should panic
     }
 
@@ -1386,7 +1373,7 @@ mod tests {
         let client = NeuroWealthVaultClient::new(&env, &contract_id);
 
         let user = Address::generate(&env);
-        
+
         client.withdraw(&user, &0); // Should panic
     }
 
@@ -1401,7 +1388,7 @@ mod tests {
         let client = NeuroWealthVaultClient::new(&env, &contract_id);
 
         let user = Address::generate(&env);
-        
+
         // Try to withdraw when balance is 0
         client.withdraw(&user, &1_000_000); // Should panic
     }
@@ -1421,7 +1408,7 @@ mod tests {
         let client = NeuroWealthVaultClient::new(&env, &contract_id);
 
         let agent = Address::generate(&env);
-        let user = Address::generate(&env);
+        let _user = Address::generate(&env);
         let usdc_token = Address::generate(&env);
 
         client.initialize(&agent, &usdc_token);
@@ -1444,12 +1431,12 @@ mod tests {
         let env = Env::default();
         env.mock_all_auths();
 
-        let (contract_id, _agent, _owner) = setup_vault(&env);
+        let (contract_id, _agent, owner) = setup_vault(&env);
         let client = NeuroWealthVaultClient::new(&env, &contract_id);
 
         let user = Address::generate(&env);
-        
-        client.pause();
+
+        client.pause(&owner);
         client.deposit(&user, &1_000_000); // Should panic
     }
 
@@ -1464,7 +1451,7 @@ mod tests {
         let client = NeuroWealthVaultClient::new(&env, &contract_id);
 
         let user = Address::generate(&env);
-        
+
         client.deposit(&user, &0); // Should panic
     }
 
@@ -1480,7 +1467,7 @@ mod tests {
         let client = NeuroWealthVaultClient::new(&env, &contract_id);
 
         let _user = Address::generate(&env);
-        
+
         // Try to deposit less than 1 USDC (1_000_000 in 7-decimal units)
         client.deposit(&_user, &999_999); // Should panic
     }
