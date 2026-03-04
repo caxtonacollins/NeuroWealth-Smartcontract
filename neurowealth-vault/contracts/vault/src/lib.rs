@@ -1829,7 +1829,7 @@ mod tests {
         let env = Env::default();
         env.mock_all_auths();
 
-        let (contract_id, agent, _owner) = setup_vault(&env);
+        let (contract_id, _agent, _owner) = setup_vault(&env);
         let client = NeuroWealthVaultClient::new(&env, &contract_id);
 
         // Note: This test will fail with the new balance check in update_total_assets
